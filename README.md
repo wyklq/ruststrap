@@ -9,6 +9,9 @@ In the latest rust nightly build, following code changes are needed to introduce
 2) target specification under src/librustc_back/target, which includes two files - one new target triplet definition, and one loading control
 3) usually some os/arch/target related changes under src/libstd/os
 
+Only this file, and the files under amd64 directories are needed. 
+The ARM information is only for reference.
+
 # License
 
 All the scripts/patches in this repository are licensed under the MIT license.
