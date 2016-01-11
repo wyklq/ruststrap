@@ -1,25 +1,13 @@
-**PSA** I'm no longer building nightly binaries, but @warricksothr has pick up the mantle (kudos to
-them!). You can find their binaries [here].
+RUST on the day I am writing this has no good support of x86 Android, and no official support of x86_64 Android.
+However, I have a very powerful Nokia N1 tablet, and with TERMUX installed, which is a very good mobile platform for rust programming.
 
-[here]: https://github.com/warricksothr/RustBuild
+So, I decide to cross compile rustc to make it work on x86_64-linux-android target.
+After may times failure, I found japaric/ruststrap scripts are the most valuable baseline.
 
-# `ruststrap`
-
-**Unofficial** Rust and Cargo stable/beta/nightly binaries for
-`arm-unknown-linux-gnueabihf`.
-
-This repository contains the build scripts. If you are looking for the binaries
-see the link below.
-
-# [1.0.0]
-
-# [1.1.0]
-
-# [1.2.0-beta]
-
-# [Nightlies]
-
-Use them at your own risk!
+In the latest rust nightly build, following code changes are needed to introduce a new target:
+1) target makefile under mk/cfg
+2) target specification under src/librustc_back/target, which includes two files - one new target triplet definition, and one loading control
+3) usually some os/arch/target related changes under src/libstd/os
 
 # License
 
