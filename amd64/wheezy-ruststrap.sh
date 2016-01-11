@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Cross compiles an ARM rust compiler (build = host = target = ARM)
-
+# Cross compiles an x86_64-linux-android rust compiler (build=host=x86_64-unknown-linux-gnu  target=x86_64-unknown-linux-gnu, x86_64-linux-android)
+# Based on japaric/ruststrap/amd64/wheezy-ruststrap.sh
+#
 # Based on the blog post "Cross bootstrapping Rust" by Riad Wahby
 # (http://github.jfet.org/Rust_cross_bootstrapping.html)
+
+# only manual execution in the bash is successfully executed, not really working on the script
+# line 11 to 24 are not covered.
 
 # Run this script in a freshly debootstrapped Debian Wheezy rootfs
 #
@@ -21,18 +25,16 @@ set -x
 
 : ${DIST_DIR:=/dist}
 : ${SRC_DIR:=/rust}
-: ${TARGET:=arm-unknown-linux-gnueabihf}
-: ${TOOLCHAIN_TARGET:=arm-linux-gnueabihf}
+: ${TARGET:=x86_64-linux-android}
+: ${TOOLCHAIN_TARGET:=x86_64-linux-android}   # Android NDK 10e provides the standalone tool with make-standalone-tools 
 
 # install C cross compiler
-echo deb http://www.emdebian.org/debian/ unstable main >> /etc/apt/sources.list
-apt-get update -qq
-apt-get install -qq --force-yes g++-4.7-arm-linux-gnueabihf
-
+#    install Android NDK 10e to, e.g. /opt/ndk
 # install native C compiler
-apt-get install -qq --force-yes build-essential g++-4.7
+#    gcc-5  (NOTE: Android NDK 10e comes with GCC 4.9, and GCC 5 by default support a different ABI - c++11)
+#             in order to make the ABI compatible, both gcc-5 and clang++ shall have CXXFLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 defined.
 
-# set default compilers
+# set default compilers -  lines 38 - 47 are not needed, because rust has defined options for Android cross compilation.
 update-alternatives \
   --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 50 \
   --slave /usr/bin/g++ g++ /usr/bin/g++-4.7 \
@@ -40,8 +42,6 @@ update-alternatives \
   --slave /usr/bin/arm-linux-gnueabihf-g++ arm-linux-gnueabihf-g++ /usr/bin/arm-linux-gnueabihf-g++-4.7
 gcc -v
 g++ -v
-arm-linux-gnueabihf-gcc -v
-arm-linux-gnueabihf-g++ -v
 
 # install Rust build dependencies
 apt-get install -qq --force-yes curl file git python
@@ -100,6 +100,8 @@ make -j$(nproc)
 
 # enable llvm-config for the cross build
 cd "$SRC_DIR"/build/${TARGET}/llvm/Release+Asserts/bin
+
+# because of same arch x86_64, the following 3 lines are not needed.
 mv llvm-config llvm-config-arm
 ln -s ../../BuildTools/Release+Asserts/bin/llvm-config
 ./llvm-config --cxxflags
@@ -113,28 +115,78 @@ grep 'CFG_LLVM_[BI]' config.mk |                                          \
     >> config.mk
 
 cd "$SRC_DIR"
-sed -i.bak 's/\([\t]*\)\(.*\$(MAKE).*\)/\1#\2/' mk/llvm.mk
-sed -i.bak 's/^\(CROSS_PREFIX_'${TARGET}'=\)\(.*\)-$/\1'${TOOLCHAIN_TARGET}'-/' mk/platform.mk
+
+#the following line doesn't work with the latest nightly build
+#sed -i.bak 's/\([\t]*\)\(.*\$(MAKE).*\)/\1#\2/' mk/llvm.mk
+#  following changes instead
+#   < $(foreach host,$(CFG_HOST), \
+#   ---
+#   > $(foreach host,$(CFG_HOST) x86_64-linux-android, \
+#   96a97
+#   >
+
+#the following line doesn't work
+#sed -i.bak 's/^\(CROSS_PREFIX_'${TARGET}'=\)\(.*\)-$/\1'${TOOLCHAIN_TARGET}'-/' mk/platform.mk
+# following changes instead:
+#248a249,256
+#> CROSS_PREFIX_x86_64-linux-android=/opt/ndk/bin/
+#> CC_x86_64-linux-android=x86_64-linux-android-gcc
+#> CXX_x86_64-linux-android=x86_64-linux-android-c++
+#> CPP_x86_64-linux-android=x86_64-linux-android-cpp
+#> AR_x86_64-linux-android=x86_64-linux-android-ar
+#> LINK_x86_64-linux-android=x86_64-linux-android-ld
+#> RUSTC_CROSS_FLAGS_x86_64-linux-android=-C linker=x86_64-linux-android-gcc -C ar=x86_64-linux-android-ar
+#>
 
 # build a working librustc for the cross architecture
 cd "$SRC_DIR"
+
+#the crates.mk still works, change the original host crates only into a target crates with both host and target
 sed -i.bak \
     's/^CRATES := .*/TARGET_CRATES += $(HOST_CRATES)\nCRATES := $(TARGET_CRATES)/' \
     mk/crates.mk
+    
+#the main.mk works, it defines necessary LLVM variables for a new rustc target    
 sed -i.bak \
     's/\(.*call DEF_LLVM_VARS.*\)/\1\n$(eval $(call DEF_LLVM_VARS,'${TARGET}'))/' \
     mk/main.mk
+    
+# changes to mk/llvm.mk
+# sed -i.bak 's/foreach host,$(CFG_HOST)/foreach host,$(CFG_HOST) $(TARGET)/' mk/llvm.mk
+# 95c95
+# < $(foreach host,$(CFG_HOST), \
+# ---
+# > $(foreach host,$(CFG_HOST) x86_64-linux-android, \
+# 96a97
+# >
+
+# the following line works
 sed -i.bak 's/foreach host,$(CFG_HOST)/foreach host,$(CFG_TARGET)/' mk/rustllvm.mk
+# and to workaround the ABI mismatch, one method to add CFLAGS is here
+# 40a41,42
+# > EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -D_GLIBCXX_USE_CXX11_ABI=0
+# >
+# 60c62
 
 cd "$SRC_DIR"
+# the following change is not needed anymore in the latest nightly build
 sed -i.bak 's/.*target_arch = .*//' src/etc/mklldeps.py
 
+# the lines 176-181 are not necessary
 cd "$SRC_DIR"/build
 ${TARGET}/llvm/Release+Asserts/bin/llvm-config --libs \
     | tr '-' '\n' | sort > arm
 x86_64-unknown-linux-gnu/llvm/Release+Asserts/bin/llvm-config --libs \
     | tr '-' '\n' | sort > x86
 diff arm x86 >/dev/null
+
+#before making the build for x86_64-linux-android, adding a new target is required to do source code changes
+$SRC_DIR/mk/cfg/x86_64-linux-android.mk  # this is needed for configurator to support a new target
+$SRC_DIR/src/librustc_back/target/mod.rs # load a new target "x86_64-linux-android" shall be added, one line change
+$SRC_DIR/src/librustc_back/target/x86_64_linux_android.rs  # a new target definition file
+$SRC_DIR/src/libstd/os/android/raw.rs   # a new arch variant of android os needs some special configuration
+$SRC_DIR/src/librustdoc/flock.rs        # general bug of android support, patch specific to linux os is also application to android
+$SRC_DIR/src/libstd/thread/local.rs     #   same as above 
 
 # build it, part 1
 cd "$SRC_DIR"/build
@@ -144,13 +196,13 @@ make -j$(nproc)
 cd "$SRC_DIR"/build
 LD_LIBRARY_PATH=$PWD/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib:$LD_LIBRARY_PATH \
     ./x86_64-unknown-linux-gnu/stage2/bin/rustc --cfg stage2 -O --cfg rtopt                                    \
-    -C linker=${TOOLCHAIN_TARGET}-g++ -C ar=${TOOLCHAIN_TARGET}-ar -C target-feature=+v6,+vfp2                 \
+    -C linker=${TOOLCHAIN_TARGET}-g++ -C ar=${TOOLCHAIN_TARGET}-ar                                             \
     --cfg debug -C prefer-dynamic --target=${TARGET}                                         \
     -o x86_64-unknown-linux-gnu/stage2/lib/rustlib/${TARGET}/bin/rustc --cfg rustc           \
     $PWD/../src/driver/driver.rs
 LD_LIBRARY_PATH=$PWD/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib:$LD_LIBRARY_PATH \
     ./x86_64-unknown-linux-gnu/stage2/bin/rustc --cfg stage2 -O --cfg rtopt                                    \
-    -C linker=${TOOLCHAIN_TARGET}-g++ -C ar=${TOOLCHAIN_TARGET}-ar -C target-feature=+v6,+vfp2                 \
+    -C linker=${TOOLCHAIN_TARGET}-g++ -C ar=${TOOLCHAIN_TARGET}-ar                                             \
     --cfg debug -C prefer-dynamic --target=${TARGET}                                         \
     -o x86_64-unknown-linux-gnu/stage2/lib/rustlib/${TARGET}/bin/rustdoc --cfg rustdoc       \
     $PWD/../src/driver/driver.rs
