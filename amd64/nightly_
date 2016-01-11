@@ -1,0 +1,189 @@
+Only in ../rustc-nightly/mk/cfg: x86_64-linux-android.mk
+diff -ur rustc-nightly/mk/crates.mk ../rustc-nightly/mk/crates.mk
+--- rustc-nightly/mk/crates.mk  2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/mk/crates.mk       2016-01-07 10:02:34.591867479 +0200
+@@ -151,7 +151,8 @@
+ # You should not need to edit below this line
+ ################################################################################
+
+-CRATES := $(TARGET_CRATES) $(HOST_CRATES)
++TARGET_CRATES += $(HOST_CRATES)
++CRATES := $(TARGET_CRATES)
+
+ # This macro creates some simple definitions for each crate being built, just
+ # some munging of all of the parameters above.
+diff -ur rustc-nightly/mk/llvm.mk ../rustc-nightly/mk/llvm.mk
+--- rustc-nightly/mk/llvm.mk    2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/mk/llvm.mk 2016-01-10 07:19:14.658169942 +0200
+@@ -78,7 +78,7 @@
+ LLVM_STDCPP_RUSTFLAGS_$(1) =
+ endif
+
+-
++$(warning WU $$(RT_OUTPUT_DIR_$(1)))
+ # LLVM linkage:
+ # Note: Filter with llvm-config so that optional targets which aren't present
+ # don't cause errors (ie PNaCl's target is only present within PNaCl's LLVM
+@@ -92,9 +92,10 @@
+                "$(CFG_STDCPP_NAME)" "$$(CFG_USING_LIBCPP)"
+ endef
+
+-$(foreach host,$(CFG_HOST), \
++$(foreach host,$(CFG_HOST) x86_64-linux-android, \
+  $(eval $(call DEF_LLVM_RULES,$(host))))
+
++
+ $(foreach host,$(CFG_HOST), \
+  $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
+
+diff -ur rustc-nightly/mk/main.mk ../rustc-nightly/mk/main.mk
+--- rustc-nightly/mk/main.mk    2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/mk/main.mk 2016-01-08 10:30:16.309079842 +0200
+@@ -325,6 +325,7 @@
+
+ $(foreach host,$(CFG_HOST), \
+  $(eval $(call DEF_LLVM_VARS,$(host))))
++$(eval $(call DEF_LLVM_VARS,x86_64-linux-android))
+
+ ######################################################################
+ # Exports for sub-utilities
+diff -ur rustc-nightly/mk/platform.mk ../rustc-nightly/mk/platform.mk
+--- rustc-nightly/mk/platform.mk        2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/mk/platform.mk     2016-01-08 03:41:24.952452118 +0200
+@@ -246,5 +246,13 @@
+
+ endef
+
++CROSS_PREFIX_x86_64-linux-android=/opt/ndk/bin/
++CC_x86_64-linux-android=x86_64-linux-android-gcc
++CXX_x86_64-linux-android=x86_64-linux-android-c++
++CPP_x86_64-linux-android=x86_64-linux-android-cpp
++AR_x86_64-linux-android=x86_64-linux-android-ar
++LINK_x86_64-linux-android=x86_64-linux-android-ld
++RUSTC_CROSS_FLAGS_x86_64-linux-android=-C linker=x86_64-linux-android-gcc -C ar=x86_64-linux-android-ar
++
+ $(foreach target,$(CFG_TARGET), \
+   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))
+diff -ur rustc-nightly/mk/rustllvm.mk ../rustc-nightly/mk/rustllvm.mk
+--- rustc-nightly/mk/rustllvm.mk        2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/mk/rustllvm.mk     2016-01-11 07:30:51.618809103 +0200
+@@ -38,6 +38,8 @@
+ EXTRA_RUSTLLVM_CXXFLAGS_$(1) := //EHsc
+ endif
+
++EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -D_GLIBCXX_USE_CXX11_ABI=0
++
+ $$(RT_OUTPUT_DIR_$(1))/$$(call CFG_STATIC_LIB_NAME_$(1),rustllvm): \
+            $$(RUSTLLVM_OBJS_OBJS_$(1))
+        @$$(call E, link: $$@)
+@@ -57,5 +59,5 @@
+ endef
+
+ # Instantiate template for all stages
+-$(foreach host,$(CFG_HOST), \
++$(foreach host,$(CFG_TARGET), \
+  $(eval $(call DEF_RUSTLLVM_TARGETS,$(host))))
+
+diff -ur rustc-nightly/src/librustc_back/target/mod.rs ../rustc-nightly/src/librustc_back/target/mod.rs
+--- rustc-nightly/src/librustc_back/target/mod.rs       2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/src/librustc_back/target/mod.rs    2016-01-09 15:31:25.176337713 +0200
+@@ -421,6 +421,7 @@
+             i686_linux_android,
+             arm_linux_androideabi,
+             aarch64_linux_android,
++           x86_64_linux_android,
+
+             i686_unknown_freebsd,
+             x86_64_unknown_freebsd,
+Only in ../rustc-nightly/src/librustc_back/target: x86_64_linux_android.rs
+diff -ur rustc-nightly/src/librustdoc/flock.rs ../rustc-nightly/src/librustdoc/flock.rs
+--- rustc-nightly/src/librustdoc/flock.rs       2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/src/librustdoc/flock.rs    2016-01-10 17:32:00.896969684 +0200
+@@ -26,7 +26,8 @@
+     use std::io;
+     use libc;
+
+-    #[cfg(target_os = "linux")]
++    #[cfg(any(target_os = "linux",
++              target_os = "android"))]
+     mod os {
+         use libc;
+
+diff -ur rustc-nightly/src/libstd/os/android/raw.rs ../rustc-nightly/src/libstd/os/android/raw.rs
+--- rustc-nightly/src/libstd/os/android/raw.rs  2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/src/libstd/os/android/raw.rs       2016-01-10 12:33:49.339717649 +0200
+@@ -158,3 +158,62 @@
+     }
+ }
+
++
++#[cfg(target_arch = "x86_64")]
++mod arch {
++    use os::raw::{c_long, c_int};
++    use os::unix::raw::{gid_t, uid_t};
++
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u16;
++
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = u64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i64;
++    #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i64;
++
++    #[repr(C)]
++    #[derive(Clone)]
++    #[stable(feature = "raw_ext", since = "1.1.0")]
++    pub struct stat {
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_dev: dev_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_ino: ino_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_nlink: nlink_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_mode: mode_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_uid: uid_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_gid: gid_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub __pad0: c_int,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_rdev: dev_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_size: off_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_blksize: blksize_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_blocks: blkcnt_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_atime: time_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_atime_nsec: c_long,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_mtime: time_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_mtime_nsec: c_long,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_ctime: time_t,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub st_ctime_nsec: c_long,
++        #[stable(feature = "raw_ext", since = "1.1.0")]
++        pub __unused: [c_long; 3],
++    }
++}
++
+diff -ur rustc-nightly/src/libstd/thread/local.rs ../rustc-nightly/src/libstd/thread/local.rs
+--- rustc-nightly/src/libstd/thread/local.rs    2016-01-05 05:04:28.000000000 +0200
++++ ../rustc-nightly/src/libstd/thread/local.rs 2016-01-10 12:36:07.408691536 +0200
+@@ -311,7 +311,7 @@
+     // fallback implementation to use as well.
+     //
+     // Due to rust-lang/rust#18804, make sure this is not generic!
+-    #[cfg(target_os = "linux")]
++    // #[cfg(target_os = "linux")]
+     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+         use prelude::v1::*;
+         use mem;
