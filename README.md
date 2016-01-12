@@ -12,6 +12,12 @@ In the latest rust nightly build, following code changes are needed to introduce
 Only this file, and the files under amd64 directories are needed. 
 The ARM information is only for reference.
 
+Unfortuantely, the running of "rustc" still failed on x86_64 Android, because of the missing support of ELF x86_64 thread local storage re-location.
+There is some interesting discussion in D language about the same problem: https://github.com/D-Programming-Language/dmd/pull/3643#issuecomment-45479519
+
+
+
+
 # License
 
 All the scripts/patches in this repository are licensed under the MIT license.
