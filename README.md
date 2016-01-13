@@ -15,7 +15,12 @@ The ARM information is only for reference.
 Unfortuantely, the running of "rustc" still failed on x86_64 Android, because of the missing support of ELF x86_64 thread local storage re-location.
 There is some interesting discussion in D language about the same problem: https://github.com/D-Programming-Language/dmd/pull/3643#issuecomment-45479519
 
-
+Some progress:
+  Latest development version of LLVM incldues emulated ELS support to workaround the Android linker problem.
+  https://llvm.org/bugs/show_bug.cgi?id=23566
+  
+  Compiling the latest LLVM requires workaround for std::to-string in Android NDK:
+  http://stackoverflow.com/questions/22774009/android-ndk-stdto-string-support
 
 
 # License
