@@ -22,6 +22,9 @@ Some progress:
   Compiling the latest LLVM requires workaround for std::to-string in Android NDK:
   http://stackoverflow.com/questions/22774009/android-ndk-stdto-string-support
 
+Patch rustllvm/PassWrapper.cpp with "Options.EmulatedTLS = 1; " before create local machine following the backend implementation in clang:
+http://reviews.llvm.org/D10524
+
 
 # License
 
