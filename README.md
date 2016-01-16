@@ -12,7 +12,7 @@ In the latest rust nightly build, following code changes are needed to introduce
 Only this file, and the files under amd64 directories are needed. 
 The ARM information is only for reference.
 
-Unfortuantely, the running of "rustc" still failed on x86_64 Android, because of the missing support of ELF x86_64 thread local storage re-location.
+Unfortuantely (the diff file contains only patches for passing compilation, further changes below to enable successful run), the running of "rustc" still failed on x86_64 Android, because of the missing support of ELF x86_64 thread local storage re-location.
 There is some interesting discussion in D language about the same problem: https://github.com/D-Programming-Language/dmd/pull/3643#issuecomment-45479519
 
 Some progress:
@@ -25,6 +25,7 @@ Some progress:
 Patch rustllvm/PassWrapper.cpp with "Options.EmulatedTLS = 1; " before create local machine following the backend implementation in clang:
 http://reviews.llvm.org/D10524
 
+* When have two targets, the Android binary "llvm-config" cannot run in the host environment. So a change to makefile is required. As a workaround, a qucik hack to a standalone llvm-config to just output "llvm-config --libdir" is provided to support the rustc library compilation.
 
 # License
 
