@@ -59,7 +59,7 @@ TARBALL=rust-${HEAD_DATE}-${HEAD_HASH}-${TARGET}
 # configure Rust
 mkdir build
 cd build
-../configure \
+CXXFLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 ../configure \
     --build=x86_64-unknown-linux-gnu \
     --host=x86_64-unknown-linux-gnu \
     --target=x86_64-unknown-linux-gnu,${TARGET}
@@ -68,7 +68,7 @@ find . -type d -exec mkdir -p ../${TARGET}/\{\} \;
 
 # build cross LLVM
 cd "$SRC_DIR"/build/x86_64-unknown-linux-gnu/llvm
-"$SRC_DIR"/src/llvm/configure \
+CXXFLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 "$SRC_DIR"/src/llvm/configure \
     --enable-targets=x86,x86_64,arm,aarch64,mips,powerpc \
     --enable-optimized \
     --enable-assertions \
@@ -83,7 +83,7 @@ cd "$SRC_DIR"/build/x86_64-unknown-linux-gnu/llvm
     --target=x86_64-unknown-linux-gnu
 make -j$(nproc)
 cd "$SRC_DIR"/build/${TARGET}/llvm
-"$SRC_DIR"/src/llvm/configure \
+CXXFLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 "$SRC_DIR"/src/llvm/configure \
     --enable-targets=x86,x86_64,arm,aarch64,mips,powerpc \
     --enable-optimized \
     --enable-assertions \
@@ -183,10 +183,10 @@ diff arm x86 >/dev/null
 #before making the build for x86_64-linux-android, adding a new target is required to do source code changes
 $SRC_DIR/mk/cfg/x86_64-linux-android.mk  # this is needed for configurator to support a new target
 $SRC_DIR/src/librustc_back/target/mod.rs # load a new target "x86_64-linux-android" shall be added, one line change
-$SRC_DIR/src/librustc_back/target/x86_64_linux_android.rs  # a new target definition file
+$SRC_DIR/src/librustc_back/target/x86_64_linux_android.rs  # a new target definition file, base.has_elf_tls=False;
 $SRC_DIR/src/libstd/os/android/raw.rs   # a new arch variant of android os needs some special configuration
 $SRC_DIR/src/librustdoc/flock.rs        # general bug of android support, patch specific to linux os is also application to android
-$SRC_DIR/src/libstd/thread/local.rs     #   same as above 
+$SRC_DIR/src/liblibc/src/unix/mod.rs    # bsd_signal is changed to signal in later revision of android
 
 # build it, part 1
 cd "$SRC_DIR"/build
