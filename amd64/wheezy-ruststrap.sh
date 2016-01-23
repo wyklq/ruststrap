@@ -101,7 +101,7 @@ make -j$(nproc)
 # enable llvm-config for the cross build
 cd "$SRC_DIR"/build/${TARGET}/llvm/Release+Asserts/bin
 
-# because of same arch x86_64, the following 3 lines are not needed.
+# because of cross compilation, the llvm-config cannot execute in the host enviornment.
 mv llvm-config llvm-config-arm
 ln -s ../../BuildTools/Release+Asserts/bin/llvm-config
 ./llvm-config --cxxflags
