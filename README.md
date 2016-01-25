@@ -11,7 +11,8 @@ In the latest rust nightly build, following code changes are needed to introduce
 
 Only this file, and the files under amd64 directories are needed. 
 The ARM information is only for reference.
-================== The following findings are valid, but RUST project has already solution for it=========================
+================== The following findings are valid, but RUST project has already solution for it
+
 Refer to issue  https://github.com/rust-lang/rust/issues/30611
 
 Android (5.0.x) has no support of ELF x86_64/x86 thread local storage re-location.
@@ -28,7 +29,8 @@ Patch rustllvm/PassWrapper.cpp with "Options.EmulatedTLS = 1; " before create lo
 http://reviews.llvm.org/D10524
 
 When have two targets, the Android binary "llvm-config" cannot run in the host environment. The instruction in the middle of the script is to solve the problem.
-=========================================================================================================================
+
+======================================================================================================================
 # License
 
 All the scripts/patches in this repository are licensed under the MIT license.
