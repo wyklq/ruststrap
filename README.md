@@ -27,7 +27,7 @@ One alternative (the issue above indicates one ready solution in RUST):
 Patch rustllvm/PassWrapper.cpp with "Options.EmulatedTLS = 1; " before create local machine following the backend implementation in clang:
 http://reviews.llvm.org/D10524
 
-* When have two targets, the Android binary "llvm-config" cannot run in the host environment. The instruction in the middle of the script is to solve the problem.
+When have two targets, the Android binary "llvm-config" cannot run in the host environment. The instruction in the middle of the script is to solve the problem.
 =========================================================================================================================
 # License
 
